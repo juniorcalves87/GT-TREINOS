@@ -22,6 +22,7 @@ const pageExerciseDetails = document.querySelector(
 );
 const profileSection = document.querySelector("#profile-section");
 const resultsSection = document.querySelector("#results-section");
+const startSection = document.querySelector("#gt-start-root");
 
 // ==========================================================================
 // FUNÇÕES DE CONTROLE DE NAVEGAÇÃO
@@ -46,6 +47,7 @@ function hideAllSections() {
     pageExerciseDetails,
     profileSection,
     resultsSection,
+    startSection,
   ];
   // Marca todas com "hidden" pra sumirem
   sections.forEach((section) => {
@@ -122,6 +124,13 @@ async function showResults() {
   // Chama a função que criamos para desenhar os gráficos e dados (agora com await)
   await renderDashboard();
 
+  startPage();
+}
+
+// Mostra o modo personalizado START
+export function showStart() {
+  hideAllSections();
+  if (startSection) startSection.classList.remove("hidden");
   startPage();
 }
 

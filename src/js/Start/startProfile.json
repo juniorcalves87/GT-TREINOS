@@ -1,0 +1,96 @@
+{
+  "name": "GT TREINOS START",
+  "version": 1,
+  "safety": {
+    "medicalClearanceRequired": true,
+    "avoidByDefault": [
+      "movimentos que provoquem dor",
+      "cargas ou amplitudes não autorizadas por profissional",
+      "progressões bruscas"
+    ],
+    "note": "Se houver condição de saúde, dor recorrente, lesão ou limitação, obtenha avaliação, liberação e adaptação profissional antes de iniciar."
+  },
+  "week": [
+    {
+      "day": "Segunda",
+      "type": "Força adaptada",
+      "durationMin": 40,
+      "focus": "Técnica e controle",
+      "items": [
+        "Aquecimento gradual e confortável, conforme orientação profissional",
+        "Sessão de força com exercícios previamente liberados",
+        "Registrar esforço e eventuais sintomas"
+      ]
+    },
+    {
+      "day": "Terça",
+      "type": "Cardio leve",
+      "durationMin": 30,
+      "focus": "Condicionamento progressivo",
+      "items": [
+        "Atividade de baixo impacto previamente autorizada",
+        "Manter intensidade confortável, permitindo conversar",
+        "Fazer pausas quando necessário"
+      ]
+    },
+    {
+      "day": "Quarta",
+      "type": "Força adaptada",
+      "durationMin": 40,
+      "focus": "Movimentos autorizados",
+      "items": [
+        "Aquecimento leve",
+        "Executar somente exercícios liberados pelo profissional",
+        "Registrar esforço e resposta do corpo"
+      ]
+    },
+    {
+      "day": "Quinta",
+      "type": "Recuperação",
+      "durationMin": 20,
+      "focus": "Recuperação ativa",
+      "items": [
+        "Descanso ou caminhada leve, conforme tolerância e liberação",
+        "Mobilidade somente quando orientada"
+      ]
+    },
+    {
+      "day": "Sexta",
+      "type": "Força adaptada",
+      "durationMin": 40,
+      "focus": "Consistência e técnica",
+      "items": [
+        "Aquecimento leve",
+        "Sessão ajustada às orientações profissionais",
+        "Encerrar sem forçar dor ou fadiga excessiva"
+      ]
+    },
+    {
+      "day": "Sábado",
+      "type": "Atividade opcional",
+      "durationMin": 25,
+      "focus": "Movimento confortável",
+      "items": [
+        "Atividade leve previamente autorizada",
+        "Priorizar conforto e regularidade"
+      ]
+    },
+    {
+      "day": "Domingo",
+      "type": "Descanso",
+      "durationMin": 0,
+      "focus": "Recuperação",
+      "items": [
+        "Descanso e planejamento da próxima semana"
+      ]
+    }
+  ],
+  "nutrition": {
+    "principles": [
+      "Priorizar alimentos básicos e pouco processados, conforme preços e disponibilidade locais",
+      "Planejar compras e preparar refeições com antecedência",
+      "Variar fontes de proteína, legumes, verduras, frutas e grãos conforme necessidade individual"
+    ],
+    "warning": "Estas são orientações gerais, não uma dieta individual. Necessidades nutricionais, restrições e orçamento devem ser avaliados com nutricionista ou serviço de saúde."
+  }
+}
