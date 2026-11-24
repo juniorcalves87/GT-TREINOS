@@ -322,6 +322,9 @@ document.addEventListener("DOMContentLoaded", async () => {
       if (await login(email, password)) {
         await checkAuth();
         await checkProfileCompletion();
+        await uiTraining.renderTrainings();
+        await uiExercises.renderExercises();
+        await renderDashboard();
         const logo = document.querySelector(".main-logo");
         if (logo) logo.click();
       } else {
@@ -355,6 +358,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       await checkAuth();
       await checkProfileCompletion();
+      await uiTraining.renderTrainings();
+      await uiExercises.renderExercises();
+      await renderDashboard();
       const logo = document.querySelector(".main-logo");
       if (logo) logo.click();
       uiTraining.showToastTraining(`Conta criada! Bem-vindo(a), ${name.split(" ")[0]}!`);
