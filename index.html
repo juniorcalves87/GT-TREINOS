@@ -377,6 +377,7 @@
           </div>
         </div>
       </section>
+      <section id="gt-start-root" class="gt-start-root hidden" aria-labelledby="gt-start-title"></section>
 
     </main>
 
@@ -661,24 +662,38 @@
         <button class="close-modal-btn" id="close-forgot-password-btn"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form id="forgot-password-form">
-        <p style="color: #666; font-size: 0.9rem; margin-bottom: 20px;">Digite seu e-mail cadastrado para redefinir sua
-          senha.</p>
+        <p style="color:#666;font-size:.9rem;margin-bottom:20px;">Informe seu e-mail. Enviaremos um link seguro para criar uma nova senha.</p>
         <div class="form-group">
           <label for="recovery-email">E-mail cadastrado</label>
-          <input type="email" id="recovery-email" placeholder="seu@email.com" required>
-        </div>
-        <div class="form-group">
-          <label for="recovery-new-password">Nova Senha</label>
-          <input type="password" id="recovery-new-password" placeholder="Mínimo 6 caracteres" required minlength="6">
-        </div>
-        <div class="form-group">
-          <label for="recovery-confirm-password">Confirmar Nova Senha</label>
-          <input type="password" id="recovery-confirm-password" placeholder="Repita a nova senha" required
-            minlength="6">
+          <input type="email" id="recovery-email" placeholder="seu@email.com" autocomplete="email" required>
         </div>
         <div class="form-buttons">
           <button type="button" class="cancel-btn" id="cancel-recovery-btn">Cancelar</button>
-          <button type="submit" class="primary-btn">Redefinir Senha</button>
+          <button type="submit" class="primary-btn">Enviar link</button>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <section id="update-password-modal" class="modal-container hidden">
+    <div class="form-card">
+      <div class="modal-header">
+        <h2>Definir nova senha</h2>
+        <button class="close-modal-btn" id="close-update-password-btn" type="button" aria-label="Fechar"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="update-password-form">
+        <p style="color:#666;font-size:.9rem;margin-bottom:18px;">Após validar o link recebido por e-mail, escolha sua nova senha.</p>
+        <div class="form-group">
+          <label for="password-reset-new">Nova senha</label>
+          <input type="password" id="password-reset-new" autocomplete="new-password" minlength="8" required>
+        </div>
+        <div class="form-group">
+          <label for="password-reset-confirm">Confirmar nova senha</label>
+          <input type="password" id="password-reset-confirm" autocomplete="new-password" minlength="8" required>
+        </div>
+        <div class="form-buttons">
+          <button type="button" class="cancel-btn" id="cancel-update-password-btn">Cancelar</button>
+          <button type="submit" class="primary-btn">Salvar nova senha</button>
         </div>
       </form>
     </div>
@@ -710,6 +725,7 @@
   <script type="module" src="/src/js/auth.js"></script>
   <script type="module" src="/src/js/dashboard.js"></script>
   <script type="module" src="/src/js/profile.js"></script>
+  <script type="module" src="/src/js/Start/start.js"></script>
   <script type="module" src="/src/js/supabase.js"></script>
 
 </body>

@@ -1,125 +1,88 @@
 import { supabase } from "../supabase.js";
+import { getAuthenticatedUserId } from "../auth.js";
 
 const trainingApi = {
-  // Procura os treinos registrados
   async getTrainings() {
-    try {
-      // Vemos quem está logado
-      const userString = localStorage.getItem("currentUser");
-      const loggedEmail = userString ? JSON.parse(userString).email : null;
-      // Se não tiver ninguém logado, não retorna nada
-      if (!loggedEmail) return [];
-
-      // Filtra direto no Supabase
-      const { data, error } = await supabase
-        .from("trainings")
-        .select("*")
-        .eq("userEmail", loggedEmail);
-
-      if (error) throw error;
-
-      return data || [];
-    } catch (error) {
-      alert("Erro ao buscar os treinos");
-      throw error;
-    }
-  },
-
-  // Procura um treino pelo Id
-  async getTrainingById(id) {
-    try {
-      const { data, error } = await supabase
-        .from("trainings")
-        .select("*")
-        .eq("id", id)
-        .maybeSingle();
-
-      if (error) throw error;
-      return data;
-    } catch (error) {
-      alert("Erro ao buscar treino por ID");
-      throw error;
-    }
-  },
-
-  // Salva um treino
-  async createTraining(training) {
+    const ownerId = await getAuthenticatedUserId();
     const { data, error } = await supabase
       .from("trainings")
-      .insert([training])
-      .select();
-
-    if (error) {
-      throw new Error(`Erro no servidor: ${error.message}`);
-    }
-    return data[0];
+      .select("*")
+      .eq("owner_id", ownerId)
+      .order("id", { ascending: true });
+    if (error) throw new Error(`Erro ao buscar treinos: ${error.message}`);
+    return data || [];
   },
 
-  // Edita um treino
+  async getTrainingById(id) {
+    const ownerId = await getAuthenticatedUserId();
+    const { data, error } = await supabase
+      .from("trainings")
+      .select("*")
+      .eq("id", id)
+      .eq("owner_id", ownerId)
+      .maybeSingle();
+    if (error) throw new Error(`Erro ao buscar treino: ${error.message}`);
+    return data;
+  },
+
+  async createTraining(training) {
+    const ownerId = await getAuthenticatedUserId();
+    const { owner_id, ...safeTraining } = training;
+    const { data, error } = await supabase
+      .from("trainings")
+      .insert([{ ...safeTraining, owner_id: ownerId }])
+      .select()
+      .single();
+    if (error) throw new Error(`Erro ao salvar treino: ${error.message}`);
+    return data;
+  },
+
   async updateTraining(training) {
-    try {
-      const { data, error } = await supabase
-        .from("trainings")
-        .update(training)
-        .eq("id", training.id)
-        .select();
-
-      if (error) throw error;
-      return data[0];
-    } catch (error) {
-      alert("Erro ao editar treino");
-      throw error;
-    }
+    const ownerId = await getAuthenticatedUserId();
+    const { id, owner_id, ...safeTraining } = training;
+    const { data, error } = await supabase
+      .from("trainings")
+      .update(safeTraining)
+      .eq("id", id)
+      .eq("owner_id", ownerId)
+      .select()
+      .maybeSingle();
+    if (error) throw new Error(`Erro ao editar treino: ${error.message}`);
+    return data;
   },
 
-  // Deleta um treino
   async deleteTraining(id) {
-    try {
-      const { error } = await supabase.from("trainings").delete().eq("id", id);
-
-      if (error) {
-        throw new Error(`Erro no servidor: ${error.message}`);
-      }
-      return true;
-    } catch (error) {
-      alert("Erro ao excluir um treino");
-      throw error;
-    }
+    const ownerId = await getAuthenticatedUserId();
+    const { error } = await supabase
+      .from("trainings")
+      .delete()
+      .eq("id", id)
+      .eq("owner_id", ownerId);
+    if (error) throw new Error(`Erro ao excluir treino: ${error.message}`);
+    return true;
   },
 
-  // Salva o histórico do treino
   async saveHistory(historyData) {
-    try {
-      const { data, error } = await supabase
-        .from("history")
-        .insert([historyData])
-        .select();
-
-      if (error) throw new Error("Erro ao salvar histórico");
-      return data[0];
-    } catch (error) {
-      console.error(error);
-    }
+    const ownerId = await getAuthenticatedUserId();
+    const { owner_id, ...safeHistory } = historyData;
+    const { data, error } = await supabase
+      .from("history")
+      .insert([{ ...safeHistory, owner_id: ownerId }])
+      .select()
+      .single();
+    if (error) throw new Error(`Erro ao salvar histórico: ${error.message}`);
+    return data;
   },
 
-  // Pega o histórico do treino
   async getHistory() {
-    try {
-      // Vemos quem está logado para pegar apenas o histórico dele
-      const userString = localStorage.getItem("currentUser");
-      const loggedEmail = userString ? JSON.parse(userString).email : null;
-      if (!loggedEmail) return [];
-
-      const { data, error } = await supabase
-        .from("history")
-        .select("*")
-        .eq("userEmail", loggedEmail);
-
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error(error);
-    }
+    const ownerId = await getAuthenticatedUserId();
+    const { data, error } = await supabase
+      .from("history")
+      .select("*")
+      .eq("owner_id", ownerId)
+      .order("date", { ascending: true });
+    if (error) throw new Error(`Erro ao buscar histórico: ${error.message}`);
+    return data || [];
   },
 };
 

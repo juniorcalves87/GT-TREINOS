@@ -1,89 +1,65 @@
 import { supabase } from "../supabase.js";
+import { getAuthenticatedUserId } from "../auth.js";
 
 const exercisesApi = {
-  // Procura os exercícios registrados
   async getExercises() {
-    try {
-      // Vê quem está logado
-      const userString = localStorage.getItem("currentUser");
-      const loggedEmail = userString ? JSON.parse(userString).email : null;
-      if (!loggedEmail) return [];
-
-      // Só devolve os exercícios que pertencem a quem está logado (Busca direto no Supabase)
-      const { data, error } = await supabase
-        .from("exercises")
-        .select("*")
-        .eq("userEmail", loggedEmail);
-
-      if (error) throw error;
-
-      return data || [];
-    } catch (error) {
-      alert("Erro ao buscar os exercícios");
-      throw error;
-    }
-  },
-
-  // Procura um exercício pelo Id
-  async getExercisesById(id) {
-    try {
-      const { data, error } = await supabase
-        .from("exercises")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if (error) throw new Error("Exercício não encontrado no servidor");
-      return data;
-    } catch (error) {
-      alert("Erro ao buscar exercício por ID");
-      throw error;
-    }
-  },
-
-  // Salva um exercício
-  async createExercises(exercises) {
+    const ownerId = await getAuthenticatedUserId();
     const { data, error } = await supabase
       .from("exercises")
-      .insert([exercises])
-      .select();
-
-    if (error) {
-      throw new Error(`Erro no servidor: ${error.message}`);
-    }
-    return data[0];
+      .select("*")
+      .eq("owner_id", ownerId)
+      .order("id", { ascending: true });
+    if (error) throw new Error(`Erro ao buscar exercícios: ${error.message}`);
+    return data || [];
   },
 
-  // Edita um exercício
-  async updateExercises(exercises) {
-    try {
-      const { data, error } = await supabase
-        .from("exercises")
-        .update(exercises)
-        .eq("id", exercises.id)
-        .select();
-
-      if (error) throw error;
-      return data[0];
-    } catch (error) {
-      alert("Erro ao editar exercício");
-      throw error;
-    }
+  async getExercisesById(id) {
+    const ownerId = await getAuthenticatedUserId();
+    const { data, error } = await supabase
+      .from("exercises")
+      .select("*")
+      .eq("id", id)
+      .eq("owner_id", ownerId)
+      .maybeSingle();
+    if (error) throw new Error(`Erro ao buscar exercício: ${error.message}`);
+    return data;
   },
 
-  // Deleta um exercício
+  async createExercises(exercise) {
+    const ownerId = await getAuthenticatedUserId();
+    const { owner_id, ...safeExercise } = exercise;
+    const { data, error } = await supabase
+      .from("exercises")
+      .insert([{ ...safeExercise, owner_id: ownerId }])
+      .select()
+      .single();
+    if (error) throw new Error(`Erro ao salvar exercício: ${error.message}`);
+    return data;
+  },
+
+  async updateExercises(exercise) {
+    const ownerId = await getAuthenticatedUserId();
+    const { id, owner_id, ...safeExercise } = exercise;
+    const { data, error } = await supabase
+      .from("exercises")
+      .update(safeExercise)
+      .eq("id", id)
+      .eq("owner_id", ownerId)
+      .select()
+      .maybeSingle();
+    if (error) throw new Error(`Erro ao editar exercício: ${error.message}`);
+    return data;
+  },
+
   async deleteExercises(id) {
-    try {
-      const { error } = await supabase.from("exercises").delete().eq("id", id);
-
-      if (error) {
-        throw new Error(`Erro no servidor: ${error.message}`);
-      }
-      return true;
-    } catch (error) {
-      alert("Erro ao excluir um exercício");
-      throw error;
-    }
+    const ownerId = await getAuthenticatedUserId();
+    const { error } = await supabase
+      .from("exercises")
+      .delete()
+      .eq("id", id)
+      .eq("owner_id", ownerId);
+    if (error) throw new Error(`Erro ao excluir exercício: ${error.message}`);
+    return true;
   },
 };
 

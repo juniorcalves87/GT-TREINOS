@@ -7,7 +7,7 @@ import apiExercises from "./Exercises/apiExercises.js";
 import uiExercises from "./Exercises/uiExercises.js";
 import uiLoads from "./Loads/uiLoads.js";
 import apiLoads from "./Loads/apiLoads.js";
-import { register, login, checkAuth } from "./auth.js";
+import { register, login, checkAuth, requestPasswordReset, updatePassword } from "./auth.js";
 import { renderDashboard } from "./dashboard.js";
 import { checkProfileCompletion, initProfileEvents } from "./profile.js";
 
@@ -25,14 +25,14 @@ const closeAllModals = () => {
 // INICIALIZAÇÃO DO APLICATIVO (DOMContentLoaded)
 // ==========================================================================
 document.addEventListener("DOMContentLoaded", async () => {
-  // Verificações de Autenticação e Perfil
-  checkProfileCompletion();
-  checkAuth();
-
-  // Renderização Inicial
-  await uiTraining.renderTrainings();
-  await uiExercises.renderExercises();
-  renderDashboard();
+  // Validar a sessão real do Supabase Auth antes de carregar os dados privados.
+  const isAuthenticated = await checkAuth();
+  if (isAuthenticated) {
+    await checkProfileCompletion();
+    await uiTraining.renderTrainings();
+    await uiExercises.renderExercises();
+    await renderDashboard();
+  }
   initProfileEvents();
 
   // ==========================================================================
@@ -312,28 +312,28 @@ document.addEventListener("DOMContentLoaded", async () => {
   // AUTENTICAÇÃO (LOGIN E CADASTRO)
   // ========================================================================
 
-  // Login
+  // Login com Supabase Auth.
   const loginForm = document.querySelector("#login-form");
   if (loginForm) {
     loginForm.addEventListener("submit", async (event) => {
       event.preventDefault();
       const email = document.querySelector("#login-email").value;
       const password = document.querySelector("#login-password").value;
-
-      // Espera a resposta do Supabase
       if (await login(email, password)) {
-        checkAuth();
-        console.log("Login realizado com sucesso!");
-        // Força renderização da página inicial
+        await checkAuth();
+        await checkProfileCompletion();
+        await uiTraining.renderTrainings();
+        await uiExercises.renderExercises();
+        await renderDashboard();
         const logo = document.querySelector(".main-logo");
         if (logo) logo.click();
       } else {
-        alert("E-mail ou senha incorretos. Tente novamente! ");
+        alert("Não foi possível entrar. Confira o e-mail e a senha ou use a recuperação de senha.");
       }
     });
   }
 
-  // Cadastro
+  // Cadastro. O Supabase pode exigir confirmação de e-mail antes do login.
   const registerForm = document.querySelector("#register-form");
   if (registerForm) {
     registerForm.addEventListener("submit", async (event) => {
@@ -341,77 +341,71 @@ document.addEventListener("DOMContentLoaded", async () => {
       const name = document.querySelector("#register-name").value;
       const email = document.querySelector("#register-email").value;
       const password = document.querySelector("#register-password").value;
-      // Espera a resposta do Supabase para criar a conta
       const response = await register(name, email, password);
-      if (response.success) {
-        // Faz o login imediatamente com os dados recém-criados
-        const loginSuccess = await login(email, password);
-        if (loginSuccess) {
-          checkAuth(); // Confirma pro sistema que agora tem alguém logado
-          // Força a renderização da página inicial 
-          const logo = document.querySelector(".main-logo");
-          if (logo) logo.click();
-          // Limpa o formulário e dá as boas-vindas
-          uiTraining.showToastTraining(`Conta criada! Bem-vindo(a) ao time, ${name.split(" ")[0]}! 🚀`);
-          registerForm.reset();
-        } else {
-          // Se por algum motivo  o login automático falhar, joga pro login normal
-          document.querySelector("#register-section").classList.add("hidden");
-          document.querySelector("#login-section").classList.remove("hidden");
-          uiTraining.showToastTraining("Conta criada! Por favor, faça seu login.");
-        }
-      } else {
-        alert(response.message);
+
+      if (!response.success) {
+        alert(response.message || "Não foi possível criar a conta.");
+        return;
       }
+
+      registerForm.reset();
+      if (response.needsEmailConfirmation) {
+        alert("Conta criada. Confirme seu e-mail pelo link enviado antes de entrar.");
+        document.querySelector("#register-section").classList.add("hidden");
+        document.querySelector("#login-section").classList.remove("hidden");
+        return;
+      }
+
+      await checkAuth();
+      await checkProfileCompletion();
+      await uiTraining.renderTrainings();
+      await uiExercises.renderExercises();
+      await renderDashboard();
+      const logo = document.querySelector(".main-logo");
+      if (logo) logo.click();
+      uiTraining.showToastTraining(`Conta criada! Bem-vindo(a), ${name.split(" ")[0]}!`);
     });
   }
 
-  // ========================================================================
-  // RECUPERAÇÃO DE SENHA
-  // ========================================================================
+  // Recuperação segura: envia link de redefinição; não consulta tabela pública de usuários.
   const forgotPasswordForm = document.querySelector("#forgot-password-form");
   if (forgotPasswordForm) {
     forgotPasswordForm.addEventListener("submit", async (event) => {
       event.preventDefault();
+      const response = await requestPasswordReset(document.querySelector("#recovery-email").value);
 
-      const email = document.querySelector("#recovery-email").value;
-      const newPassword = document.querySelector(
-        "#recovery-new-password",
-      ).value;
-      const confirmPassword = document.querySelector(
-        "#recovery-confirm-password",
-      ).value;
-
-      if (newPassword !== confirmPassword) {
-        alert("Erro! As senhas não coincidem.");
+      if (!response.success) {
+        alert(response.message || "Não foi possível solicitar a recuperação.");
         return;
       }
 
-      // Procura o usuário no Supabase
-      const { data: user } = await supabase
-        .from("users")
-        .select("*")
-        .eq("email", email)
-        .maybeSingle();
+      forgotPasswordForm.reset();
+      document.querySelector("#forgot-password-modal")?.classList.remove("active");
+      uiTraining.showToastTraining("Se o endereço estiver cadastrado, você receberá um link para redefinir a senha.");
+    });
+  }
 
-      if (user) {
-        // Atualiza a senha no banco
-        await supabase
-          .from("users")
-          .update({ password: newPassword })
-          .eq("email", email);
-
-        uiTraining.showToastTraining(
-          "Senha redefinida com sucesso! Faça seu login. ✅",
-        );
-
-        forgotPasswordForm.reset();
-        document
-          .querySelector("#forgot-password-modal")
-          .classList.remove("active");
-      } else {
-        alert("E-mail não encontrado! Verifique se digitou corretamente.");
+  const updatePasswordForm = document.querySelector("#update-password-form");
+  if (updatePasswordForm) {
+    updatePasswordForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const password = document.querySelector("#password-reset-new").value;
+      const confirmation = document.querySelector("#password-reset-confirm").value;
+      if (password !== confirmation) {
+        alert("As senhas não coincidem.");
+        return;
       }
+
+      const response = await updatePassword(password);
+      if (!response.success) {
+        alert(response.message || "Não foi possível atualizar a senha.");
+        return;
+      }
+
+      updatePasswordForm.reset();
+      document.querySelector("#update-password-modal")?.classList.remove("active");
+      history.replaceState({}, document.title, window.location.pathname);
+      uiTraining.showToastTraining("Senha atualizada com sucesso.");
     });
   }
 
@@ -1106,25 +1100,6 @@ export async function exportResultsToPDF() {
       uiTraining.showToastTraining("Relatório baixado com sucesso! ✅");
     });
 }
-
-// --------------------------- TESTES PARA O BANCO DE DADOS ---------------------------
-import { supabase } from "./supabase.js";
-
-async function testarConexao() {
-  console.log("🟡 Testando a conexão com o banco...");
-
-  // Tenta buscar qualquer coisa só pra ver se o banco responde
-  const { error } = await supabase.from("users").select("id").limit(1);
-
-  if (error) {
-    console.error("🔴 FALHA NA CONEXÃO:", error.message);
-  } else {
-    console.log("🟢 SUCESSO! O cabo está conectado perfeitamente.");
-  }
-}
-
-testarConexao();
-
 
 // ==========================================================================
 // FUNÇÃO UNIVERSAL: RESTAURAR TREINO ATIVO (Sem perder dados)

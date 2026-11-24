@@ -1,152 +1,150 @@
+import { supabase } from "./supabase.js";
+import { getAuthenticatedUser, updatePassword } from "./auth.js";
 import uiTraining from "./Training/uiTraining.js";
-import { supabase } from "./supabase.js"; // Importação para conectar ao banco
 
-// Verifica se o perfil do usuário está completo e mostra alerta se houver campos faltando
-export function checkProfileCompletion() {
-  const currentUser = JSON.parse(localStorage.getItem("currentUser"));
-  if (!currentUser) return;
-
-  const alertContainer = document.querySelector("#profile-alert-container");
-  if (!alertContainer) return;
-
-  const isComplete =
-    currentUser.age &&
-    currentUser.gender &&
-    currentUser.weight &&
-    currentUser.height &&
-    currentUser.goal;
-
-  if (!isComplete) {
-    alertContainer.classList.remove("hidden");
-  } else {
-    alertContainer.classList.add("hidden");
-  }
-
-  // Preenche os campos do formulário com os dados atuais
-  document.querySelector("#profile-name").value = currentUser.name || "";
-  document.querySelector("#profile-email").value = currentUser.email || "";
-  document.querySelector("#profile-weight").value = currentUser.weight || "";
-  document.querySelector("#profile-height").value = currentUser.height || "";
-  document.querySelector("#profile-goal").value = currentUser.goal || "";
-  document.querySelector("#profile-age").value = currentUser.age || "";
-  document.querySelector("#profile-gender").value = currentUser.gender || "";
+function updateProfileForm(profile) {
+  const values = {
+    "#profile-name": profile.name || "",
+    "#profile-email": profile.email || "",
+    "#profile-weight": profile.weight ?? "",
+    "#profile-height": profile.height ?? "",
+    "#profile-goal": profile.goal || "",
+    "#profile-age": profile.age ?? "",
+    "#profile-gender": profile.gender || "",
+  };
+  Object.entries(values).forEach(([selector, value]) => {
+    const input = document.querySelector(selector);
+    if (input) input.value = value;
+  });
 }
 
-// ========================================================================
-// PERFIL DO USUÁRIO E CONFIGURAÇÕES
-// ========================================================================
-export function initProfileEvents() {
-  // Salvando dados do Perfil
-  const profileForm = document.querySelector("#profile-form");
-  if (profileForm) {
-    profileForm.addEventListener("submit", async (event) => {
-      // Adicionado async
-      event.preventDefault();
+export async function checkProfileCompletion() {
+  if (!supabase) return null;
+  try {
+    const user = await getAuthenticatedUser();
+    const { data: profile, error } = await supabase
+      .from("profiles")
+      .select("id,email,name,age,gender,weight,height,goal,photo")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (error) throw error;
 
-      const name = document.querySelector("#profile-name").value;
-      const weight = document.querySelector("#profile-weight").value;
-      const height = document.querySelector("#profile-height").value;
-      const goal = document.querySelector("#profile-goal").value;
-      const age = document.querySelector("#profile-age").value;
-      const gender = document.querySelector("#profile-gender").value;
-      const newPassword = document.querySelector("#profile-password").value;
-      const newPasswordConfirm = document.querySelector(
-        "#profile-password-confirm",
-      ).value;
+    const currentUser = {
+      id: user.id,
+      email: user.email,
+      name: profile?.name || user.user_metadata?.name || user.email?.split("@")[0] || "Usuário",
+      age: profile?.age ?? null,
+      gender: profile?.gender ?? null,
+      weight: profile?.weight ?? null,
+      height: profile?.height ?? null,
+      goal: profile?.goal ?? null,
+      photo: profile?.photo ?? null,
+    };
+    localStorage.setItem("currentUser", JSON.stringify(currentUser));
 
-      let currentUser = JSON.parse(localStorage.getItem("currentUser"));
-      if (!currentUser) return;
+    const alertContainer = document.querySelector("#profile-alert-container");
+    const complete = Boolean(currentUser.age && currentUser.gender && currentUser.weight && currentUser.height && currentUser.goal);
+    if (alertContainer) alertContainer.classList.toggle("hidden", complete);
+    updateProfileForm(currentUser);
 
-      // Monta o objeto de atualização
-      const updates = {
-        name,
-        weight,
-        height,
-        goal,
-        age,
-        gender,
-      };
-
-      // Alteração de Senha
-      if (newPassword.trim() !== "") {
-        if (newPassword === newPasswordConfirm) {
-          updates.password = newPassword; // Adiciona a nova senha ao pacote
-          document.querySelector("#profile-password").value = "";
-          document.querySelector("#profile-password-confirm").value = "";
-        } else {
-          uiTraining.showToastTraining("Erro! Senhas diferentes!", "error");
-          document.querySelector("#profile-password").value = "";
-          document.querySelector("#profile-password-confirm").value = "";
-          return;
-        }
+    const avatar = document.querySelector("#profile-avatar-preview");
+    if (avatar) {
+      if (currentUser.photo) {
+        const image = document.createElement("img");
+        image.src = currentUser.photo;
+        image.alt = "Foto do perfil";
+        image.style.cssText = "width:100%;height:100%;object-fit:cover;border-radius:50%;";
+        avatar.replaceChildren(image);
+      } else {
+        avatar.innerHTML = '<i class="fa-solid fa-user"></i>';
       }
+    }
+    return currentUser;
+  } catch (error) {
+    console.error("Erro ao carregar o perfil:", error);
+    return null;
+  }
+}
 
+export function initProfileEvents() {
+  const form = document.querySelector("#profile-form");
+  if (form) {
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
       try {
-        // --- SALVA NO SUPABASE ---
-        const { error } = await supabase
-          .from("users")
-          .update(updates)
-          .eq("email", currentUser.email);
+        const user = await getAuthenticatedUser();
+        const newPassword = document.querySelector("#profile-password")?.value || "";
+        const confirmPassword = document.querySelector("#profile-password-confirm")?.value || "";
+        if (newPassword) {
+          if (newPassword !== confirmPassword) {
+            uiTraining.showToastTraining("As senhas não coincidem.", "error");
+            return;
+          }
+          const passwordResult = await updatePassword(newPassword);
+          if (!passwordResult.success) {
+            uiTraining.showToastTraining(passwordResult.message || "Não foi possível alterar a senha.", "error");
+            return;
+          }
+        }
 
+        const updates = {
+          email: user.email,
+          name: document.querySelector("#profile-name").value.trim(),
+          weight: document.querySelector("#profile-weight").value === "" ? null : Number(document.querySelector("#profile-weight").value),
+          height: document.querySelector("#profile-height").value === "" ? null : Number(document.querySelector("#profile-height").value),
+          goal: document.querySelector("#profile-goal").value || null,
+          age: document.querySelector("#profile-age").value === "" ? null : Number(document.querySelector("#profile-age").value),
+          gender: document.querySelector("#profile-gender").value || null,
+          updated_at: new Date().toISOString(),
+        };
+        const { error } = await supabase.from("profiles").upsert(
+          { id: user.id, ...updates },
+          { onConflict: "id" },
+        );
         if (error) throw error;
 
-        // Atualiza o LocalStorage para refletir as mudanças no site sem deslogar
-        const newUserState = { ...currentUser, ...updates };
-        localStorage.setItem("currentUser", JSON.stringify(newUserState));
-
-        uiTraining.showToastTraining("Perfil atualizado com sucesso! ✅");
-
-        const heroName = document.getElementById("hero-display-name");
-        if (heroName) heroName.textContent = name;
-
-        // Remove alerta se tudo estiver preenchido
-        checkProfileCompletion();
+        document.querySelector("#profile-password").value = "";
+        document.querySelector("#profile-password-confirm").value = "";
+        await checkProfileCompletion();
+        uiTraining.showToastTraining("Perfil atualizado com segurança!");
       } catch (error) {
         console.error("Erro ao atualizar perfil:", error);
-        alert("Erro ao salvar os dados no banco de dados.");
+        uiTraining.showToastTraining("Não foi possível salvar. Verifique a configuração do banco.", "error");
       }
     });
   }
 
-  // Upload de Foto de Perfil
-  const profilePhotoInput = document.querySelector("#profile-photo-input");
-  if (profilePhotoInput) {
-    profilePhotoInput.addEventListener("change", (event) => {
-      const file = event.target.files[0];
-      if (file) {
+  const photoInput = document.querySelector("#profile-photo-input");
+  if (photoInput) {
+    photoInput.addEventListener("change", async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (!file.type.startsWith("image/") || file.size > 2 * 1024 * 1024) {
+        uiTraining.showToastTraining("Escolha uma imagem de até 2 MB.", "error");
+        photoInput.value = "";
+        return;
+      }
+      try {
+        const user = await getAuthenticatedUser();
         const reader = new FileReader();
-        reader.onload = async (e) => {
-          // Adicionado async
-          const base64Image = e.target.result;
-          const avatarPreview = document.querySelector(
-            "#profile-avatar-preview",
-          );
-          if (avatarPreview) {
-            avatarPreview.innerHTML = `<img src="${base64Image}" alt="Foto" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`;
-          }
-
-          let currentUser = JSON.parse(localStorage.getItem("currentUser"));
-
+        reader.onload = async () => {
           try {
-            // --- SALVA A FOTO NO SUPABASE ---
-            const { error } = await supabase
-              .from("users")
-              .update({ photo: base64Image })
-              .eq("email", currentUser.email);
-
+            const { error } = await supabase.from("profiles")
+              .update({ photo: reader.result, updated_at: new Date().toISOString() })
+              .eq("id", user.id);
             if (error) throw error;
-
-            // Atualiza memória local
-            currentUser.photo = base64Image;
-            localStorage.setItem("currentUser", JSON.stringify(currentUser));
-
-            uiTraining.showToastTraining("Foto atualizada com sucesso! 📸");
+            await checkProfileCompletion();
+            uiTraining.showToastTraining("Foto atualizada!");
           } catch (error) {
-            console.error("Erro ao salvar foto:", error);
-            alert("Não foi possível salvar a foto no banco de dados.");
+            console.error(error);
+            uiTraining.showToastTraining("Não foi possível salvar a foto.", "error");
           }
         };
+        reader.onerror = () => uiTraining.showToastTraining("Não foi possível ler o arquivo.", "error");
         reader.readAsDataURL(file);
+      } catch (error) {
+        console.error(error);
+        uiTraining.showToastTraining("Sessão inválida. Entre novamente.", "error");
       }
     });
   }

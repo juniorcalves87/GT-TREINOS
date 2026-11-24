@@ -1,89 +1,65 @@
 import { supabase } from "../supabase.js";
+import { getAuthenticatedUserId } from "../auth.js";
 
 const loadsApi = {
-  // Procura as cargas registrados
   async getLoads() {
-    try {
-      // Vê quem está logado
-      const userString = localStorage.getItem("currentUser");
-      const loggedEmail = userString ? JSON.parse(userString).email : null;
-      if (!loggedEmail) return [];
-
-      // Só devolve as cargas que pertencem a quem está logado (Busca direto no Supabase)
-      const { data, error } = await supabase
-        .from("loads")
-        .select("*")
-        .eq("userEmail", loggedEmail);
-
-      if (error) throw error;
-
-      return data || [];
-    } catch (error) {
-      alert("Erro ao buscar os cargas");
-      throw error;
-    }
-  },
-
-  // Procura uma carga pelo Id
-  async getLoadById(id) {
-    try {
-      const { data, error } = await supabase
-        .from("loads")
-        .select("*")
-        .eq("id", id)
-        .single();
-
-      if (error) throw new Error("Carga não encontrada no servidor");
-      return data;
-    } catch (error) {
-      alert("Erro ao buscar carga por ID");
-      throw error;
-    }
-  },
-
-  // Salva uma carga
-  async createLoads(loads) {
+    const ownerId = await getAuthenticatedUserId();
     const { data, error } = await supabase
       .from("loads")
-      .insert([loads])
-      .select();
-
-    if (error) {
-      throw new Error(`Erro no servidor: ${error.message}`);
-    }
-    return data[0];
+      .select("*")
+      .eq("owner_id", ownerId)
+      .order("date", { ascending: false });
+    if (error) throw new Error(`Erro ao buscar cargas: ${error.message}`);
+    return data || [];
   },
 
-  // Edita uma carga
-  async updateloads(loads) {
-    try {
-      const { data, error } = await supabase
-        .from("loads")
-        .update(loads)
-        .eq("id", loads.id)
-        .select();
-
-      if (error) throw error;
-      return data[0];
-    } catch (error) {
-      alert("Erro ao editar carga");
-      throw error;
-    }
+  async getLoadById(id) {
+    const ownerId = await getAuthenticatedUserId();
+    const { data, error } = await supabase
+      .from("loads")
+      .select("*")
+      .eq("id", id)
+      .eq("owner_id", ownerId)
+      .maybeSingle();
+    if (error) throw new Error(`Erro ao buscar carga: ${error.message}`);
+    return data;
   },
 
-  // Deleta uma carga
+  async createLoads(load) {
+    const ownerId = await getAuthenticatedUserId();
+    const { owner_id, ...safeLoad } = load;
+    const { data, error } = await supabase
+      .from("loads")
+      .insert([{ ...safeLoad, owner_id: ownerId }])
+      .select()
+      .single();
+    if (error) throw new Error(`Erro ao salvar carga: ${error.message}`);
+    return data;
+  },
+
+  async updateloads(load) {
+    const ownerId = await getAuthenticatedUserId();
+    const { id, owner_id, ...safeLoad } = load;
+    const { data, error } = await supabase
+      .from("loads")
+      .update(safeLoad)
+      .eq("id", id)
+      .eq("owner_id", ownerId)
+      .select()
+      .maybeSingle();
+    if (error) throw new Error(`Erro ao editar carga: ${error.message}`);
+    return data;
+  },
+
   async deleteloads(id) {
-    try {
-      const { error } = await supabase.from("loads").delete().eq("id", id);
-
-      if (error) {
-        throw new Error(`Erro no servidor: ${error.message}`);
-      }
-      return true;
-    } catch (error) {
-      alert("Erro ao excluir uma carga");
-      throw error;
-    }
+    const ownerId = await getAuthenticatedUserId();
+    const { error } = await supabase
+      .from("loads")
+      .delete()
+      .eq("id", id)
+      .eq("owner_id", ownerId);
+    if (error) throw new Error(`Erro ao excluir carga: ${error.message}`);
+    return true;
   },
 };
 
