@@ -4,7 +4,7 @@
 import uiTraining from "./Training/uiTraining.js";
 import uiExercises from "./Exercises/uiExercises.js";
 import apiExercises from "./Exercises/apiExercises.js";
-import { checkAuth } from "./auth.js";
+import { checkAuth, logout } from "./auth.js";
 import { renderDashboard } from "./dashboard.js";
 
 // ==========================================================================
@@ -328,15 +328,19 @@ document.addEventListener("click", async (event) => {
   }
 
   if (target.closest("#confirm-logout-btn")) {
-    localStorage.removeItem("currentUser");
-    checkAuth();
-    const modal = document.querySelector("#logout-modal");
-    if (modal) {
-      modal.classList.remove("active");
-      modal.classList.add("hidden");
+    try {
+      await logout();
+      await checkAuth();
+      const modal = document.querySelector("#logout-modal");
+      if (modal) {
+        modal.classList.remove("active");
+        modal.classList.add("hidden");
+      }
+      window.location.reload();
+    } catch (error) {
+      console.error("Erro ao sair:", error);
+      alert("Não foi possível encerrar a sessão. Tente novamente.");
     }
-    console.log("Usuário deslogou com sucesso!");
-    window.location.reload(); // Recarrega para limpar o estado da aplicação
   }
 
   // --- NAVEGAÇÃO DE AUTENTICAÇÃO E RECUPERAÇÃO ---
@@ -366,6 +370,17 @@ document.addEventListener("click", async (event) => {
     target.closest("#cancel-recovery-btn")
   ) {
     const modal = document.querySelector("#forgot-password-modal");
+    if (modal) {
+      modal.classList.remove("active");
+      modal.classList.add("hidden");
+    }
+  }
+
+  if (
+    target.closest("#close-update-password-btn") ||
+    target.closest("#cancel-update-password-btn")
+  ) {
+    const modal = document.querySelector("#update-password-modal");
     if (modal) {
       modal.classList.remove("active");
       modal.classList.add("hidden");
